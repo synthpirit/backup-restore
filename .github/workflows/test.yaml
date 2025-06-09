@@ -1,0 +1,44 @@
+name: Test
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/5 * * * *'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print current UTC time
+        run: date -u
+      - name: Get timestamp and format
+        id: time
+        run: |
+          echo "run_time=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+      
+      - name: Show the time
+        run: echo "Triggered at ${{ steps.time.outputs.run_time }}"
+      - name: Cache kubectl client
+        uses: actions/cache@v2
+        id: cache
+        with:
+          path: ~/kubectl
+          key: ${{ runner.os }}-kubectl33-${{ hashFiles('~/kubectl') }}
+          restore-keys: |
+            ${{ runner.os }}-kubectl
+
+      - name: print dir
+        run: |
+          pwd
+          ls ~
+
+      - name: Download kubectl client
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          curl -L "https://dl.k8s.io/release/v1.22.0/bin/linux/amd64/kubectl" -o ~/kubectl
+          chmod +x ~/kubectl
+          sudo cp ~/kubectl /usr/local/bin/
+          echo "kubectl" > .kubectl-cache
+
+      - name: Verify kubectl installation
+        run: kubectl version --client
